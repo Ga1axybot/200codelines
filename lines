@@ -1,0 +1,206 @@
+--SERVICES--
+local Players = game:GetService("Players")
+local ServerScriptService = game:GetService("ServerScriptService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+--VARIABLES--
+local Remotes = ReplicatedStorage.Remotes
+local ChangeValues = Remotes.ChangeValues
+
+
+local Template = require(ServerScriptService.PlayerData.Template) --data template
+local Manager = require(ServerScriptService.PlayerData.Manager) --data holder
+local ProfileService = require(ServerScriptService.Libs.ProfileService) --profile service lib
+
+--line underneath gets datastore using profileservice library
+local ProfileStore = ProfileService.GetProfileStore("coolgame", Template)
+
+--message if player data fails
+local KICKMESSAGE = "Data Issue"
+
+
+local function Leaderstats(player: Player) --creates leaderstats
+	
+	local profile = Manager.Profiles[player] --uses manager/profileservice to get player data
+	if not profile then return end --stops script if no profile (something broke)
+	
+	
+	local leaderstats = Instance.new("Folder", player) --creates leaderstats folder
+	leaderstats.Name = "leaderstats"
+	
+	--next few lines create values for leaderstats, parenting them to leaderstats,
+	--and setting their value
+	local value1 = Instance.new("NumberValue", leaderstats)
+	value1.Name = "value1"
+	value1.Value = profile.Data.Value1 --sets to data for value 1 from player's data
+	
+	
+	local value2 = Instance.new("NumberValue", leaderstats)
+	value2.Name = "value2"
+	value2.Value = profile.Data.Value2 --sets to data for value 2 from player's data
+	
+	for i = 1, profile.Data.Value1 do --creates a certain num of parts depends on data value
+		
+		task.wait()
+		
+		--random sizing
+		local randomXSize = math.random(1, 10)
+		local randomYSize = math.random(1, 10)
+		local randomZSize = math.random(1, 10)
+		
+		--random positioning
+		local randomXPos = math.random(-10, 10)
+		local randomYPos = math.random(10, 50)
+		local randomZPos = math.random(-10, 10)
+		
+		--random color
+		local color = Color3.fromRGB(255, 0, 0)
+		
+		--sets part's properties
+		local part = Instance.new("Part")
+		part.Name = "part"
+		part.Parent = workspace
+		part.Size = Vector3.new(randomXSize, randomYSize, randomZSize)
+		part.Position = Vector3.new(randomXPos, randomYPos, randomZPos)
+		part.Color = color
+		part.Material = Enum.Material.Neon
+		
+	end
+	
+	--does same as value 1 but for value 2
+	for i = 1, profile.Data.Value2 do
+
+		task.wait()
+
+		local randomXSize = math.random(1, 10)
+		local randomYSize = math.random(1, 10)
+		local randomZSize = math.random(1, 10)
+
+		local randomXPos = math.random(-10, 10)
+		local randomYPos = math.random(10, 50)
+		local randomZPos = math.random(-10, 10)
+
+		local color = Color3.fromRGB(0, 255, 0)
+
+		local part = Instance.new("Part")
+		part.Name = "part"
+		part.Parent = workspace
+		part.Size = Vector3.new(randomXSize, randomYSize, randomZSize)
+		part.Position = Vector3.new(randomXPos, randomYPos, randomZPos)
+		part.Color = color
+		part.Material = Enum.Material.Neon
+		
+	end
+	
+end
+
+local function Load(player: Player) --creates/loads player's data
+	
+	--line below creates/loads profile for player
+	local profile = ProfileStore:LoadProfileAsync("Player_"..player.UserId)
+	
+	if not profile then --data did not load successfully, player kicked
+		player:Kick(KICKMESSAGE)
+		return
+	end
+	
+	
+	profile:AddUserId(player.UserId) --makes sure the player's id is added to profile/data
+	profile:Reconcile()
+	profile:ListenToRelease(function() --listens to when the player would leave/if something
+		--goes wrong
+		
+		Manager.Profiles[player] = nil --deletes profile from server
+		player:Kick(KICKMESSAGE) --kicks player
+		
+	end)
+	
+	
+	if player:IsDescendantOf(Players) then --checks if player is still in game
+		
+		Manager.Profiles[player] = profile -- sets profile
+		Leaderstats(player) --creates leaderstats
+		
+	else
+		
+		profile:Release() -- runs listentorelease function
+		
+	end
+	
+end
+
+-- line below runs through all players in case players join before script can run
+for _, player in Players:GetPlayers() do
+	
+	task.spawn(Load, player) --loads players data in separate thread
+	
+end
+
+
+Players.PlayerAdded:Connect(Load) --loads data if player joins
+Players.PlayerRemoving:Connect(function(player) --removes data when player leaves
+	
+	local profile = Manager.Profiles[player] --tries to find profile
+	
+	if profile then
+		profile:Release() --if profile remove data from server
+	end
+	
+end)
+
+--line below runs if player presses a value button on left of screen
+ChangeValues.OnServerEvent:Connect(function(player, value)
+	
+	local profile = Manager.Profiles[player] --tries to find profile to add data to stats
+	
+	if not profile then return end --stops script if profile not found
+	
+	-- sets part's size before spawning
+	local randomXSize = math.random(1, 10)
+	local randomYSize = math.random(1, 10)
+	local randomZSize = math.random(1, 10)
+	
+	--sets part's position before spawning
+	local randomXPos = math.random(-10, 10)
+	local randomYPos = math.random(10, 50)
+	local randomZPos = math.random(-10, 10)
+	
+	if value == "value1" then --checks if button clicked is value1
+		
+		--line below set's parts color to red
+		local color = Color3.fromRGB(255, 0, 0)
+		
+		-- adds to data stats and leaderstats
+		profile.Data.Value1 += 1
+		player.leaderstats:WaitForChild("value1").Value = profile.Data.Value1
+		
+		--part spawning/setup
+		local part = Instance.new("Part")
+		part.Name = "part"
+		part.Parent = workspace
+		part.Size = Vector3.new(randomXSize, randomYSize, randomZSize)
+		part.Position = Vector3.new(randomXPos, randomYPos, randomZPos)
+		part.Color = color
+		part.Material = Enum.Material.Neon
+		
+	elseif value == "value2" then --checks if button clicked is value2
+		
+		--line below sets part color to green
+		local color = Color3.fromRGB(0, 255, 0)
+		
+		--adds to data stats and leaderstats
+		profile.Data.Value2 += 1
+		player.leaderstats:WaitForChild("value2").Value = profile.Data.Value2
+		
+		--spawns part
+		local part = Instance.new("Part")
+		part.Name = "part"
+		part.Parent = workspace
+		part.Size = Vector3.new(randomXSize, randomYSize, randomZSize)
+		part.Position = Vector3.new(randomXPos, randomYPos, randomZPos)
+		part.Color = color
+		part.Material = Enum.Material.Neon
+		
+	end
+	
+end)
